@@ -1,148 +1,227 @@
 # lanshu-create-ai-presenter-video
 
-![Codex Skill](https://img.shields.io/badge/Codex-Skill-111827?logo=openai&logoColor=white)
+**English** | [简体中文](README.zh-CN.md)
+
+[![Agent Skills](https://img.shields.io/badge/Agent_Skills-SKILL.md-111827)](https://agentskills.io)
+![Harness Neutral](https://img.shields.io/badge/Harness-Neutral-8B5CF6)
 ![Provider Neutral](https://img.shields.io/badge/Provider-Neutral-0EA5E9)
 [![Validate Skill](https://github.com/cclank/lanshu-create-ai-presenter-video/actions/workflows/validate.yml/badge.svg)](https://github.com/cclank/lanshu-create-ai-presenter-video/actions/workflows/validate.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-F4C430.svg)](LICENSE)
 [![Python 3.9+](https://img.shields.io/badge/Python-3.9%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![FFmpeg Required](https://img.shields.io/badge/FFmpeg-Required-007808?logo=ffmpeg&logoColor=white)](https://ffmpeg.org/)
 [![GitHub stars](https://img.shields.io/github/stars/cclank/lanshu-create-ai-presenter-video?style=flat)](https://github.com/cclank/lanshu-create-ai-presenter-video/stargazers)
+[![Follow on X](https://img.shields.io/badge/Follow-@LufzzLiz-000000?logo=x&logoColor=white)](https://x.com/LufzzLiz)
 
-一个面向 Codex 的通用数字人视频制作 Skill。输入主题或文案与授权人物图后，它会组织文案、配音、人物生成、口型校准、字幕与关键词动效、剪辑、渲染和质量验收。
+> Turn a topic or script and one authorized portrait into a verified, publish-ready AI presenter video, driven by the coding agent you already use.
 
-它按能力选择当前环境可用的工具，项目源码不绑定服务商、模型名称或私有接口。
+`lanshu-create-ai-presenter-video` is an [Agent Skill](https://agentskills.io) that takes an AI agent through the full production of a talking-presenter video: script, narration, presenter generation, lip-sync, captions and keyword motion graphics, editing, rendering, and quality assurance. Every stage is gated by evidence on disk, and nothing is delivered until the output passes decode and loudness checks.
 
-## 最少需要提供什么
+## Highlights
 
-1. 一个主题或一份完整文案。
-2. 一张经过授权、包含清晰成年人物的参考图。
+- **Harness-neutral.** A standard `SKILL.md` that loads in Claude Code, Codex, Gemini CLI, Cursor, OpenCode, GitHub Copilot, and other Agent Skills clients. Any agent that can read files and run shell commands can follow it directly.
+- **Provider-neutral.** Voice, presenter video, lip-sync, and speech recognition are selected by capability at run time. Each job records the provider, model, parameters, and task IDs it actually used.
+- **Audio-locked timeline.** The approved narration is the master clock for presenter motion, captions, cuts, and final duration, which keeps lip-sync and scene boundaries aligned.
+- **Evidence-gated workflow.** Eight production states, from `intake` to `verified`, computed from artifacts instead of declared by hand.
+- **Cost guardrails.** Pilot-first generation, an explicit billing statement before the first paid call, retry ceilings, and task-ID recovery to avoid duplicate charges.
+- **Verified delivery.** Master and share encodes are fully decoded and loudness-checked before any file is published.
 
-可选输入包括声音样本、屏幕录制、图片、B-roll、品牌素材、目标平台、时长、横竖屏、风格、水印和结尾引导。
+## What you provide
 
-## 安装
+| Input | Required | Notes |
+|---|---|---|
+| Topic or finished script | Yes | A topic becomes a 45–75 second script; a supplied script keeps its natural length. |
+| Presenter image | Yes | One clear adult presenter, with confirmed rights to use the image. |
+| Voice sample | No | Used only with explicit cloning authorization; otherwise a stock voice is selected and recorded. |
+| Supporting media | No | Screen recordings, images, B-roll, or brand assets, used where they prove or clarify a spoken point. |
+| Delivery preferences | No | Platform, duration, aspect ratio, style, watermark, music, and call to action. |
+
+## How it works
+
+```text
+Topic or script + authorized portrait
+        │
+        ▼
+Lock script and full narration ──► narration becomes the master clock
+        │
+        ▼
+Low-cost presenter pilot
+        │
+        ▼
+Presenter generation (split at real pauses when a provider caps duration)
+        │
+        ▼
+Audio-driven edit: captions, keyword graphics, cover, close
+        │
+        ▼
+Technical and visual QA
+        │
+        ▼
+Master, share copy, contact sheet, and delivery report
+```
+
+Each state requires evidence before a job may advance. `check_state.py` computes the state from the job's artifacts:
+
+| State | Evidence required |
+|---|---|
+| `intake` | Job created |
+| `content_locked` | Passing preflight report, script, beat sheet |
+| `audio_locked` | Decodable final narration, ASR report |
+| `visual_plan_locked` | Timeline, storyboard, approved plan |
+| `presenter_generated` | Recorded presenter capability, selected video, visual review |
+| `composition_checked` | Composition report |
+| `rendered` | Decodable render with video and audio |
+| `verified` | Master, share copy, and a delivery report with passing output loudness |
+
+## Requirements
+
+- An Agent Skills harness, or any coding agent that can read files and run shell commands.
+- Python 3.9+, FFmpeg with `ffprobe`, Bash, `jq`, `awk`, and `sed`.
+- Access to at least one voice synthesis, presenter video generation, and lip-sync capability: a cloud CLI, an API, or a local model.
+- Optional: a deterministic timeline compositor such as HyperFrames for captions, motion graphics, and final rendering.
+
+## Installation
+
+The repository directory is the skill. Clone it into your harness's skills directory and keep the folder name `lanshu-create-ai-presenter-video`, which the Agent Skills specification requires to match the skill `name`.
+
+| Harness | Skills directory | Explicit invocation |
+|---|---|---|
+| Claude Code | `~/.claude/skills/` or project-level `.claude/skills/` | `/lanshu-create-ai-presenter-video` |
+| Codex | `~/.codex/skills/` | `$lanshu-create-ai-presenter-video` |
+| Other Agent Skills clients | See the client's documentation, linked from the [client list](https://agentskills.io/clients) | Client-specific |
+
+For example, with Claude Code:
 
 ```bash
 git clone https://github.com/cclank/lanshu-create-ai-presenter-video.git \
-  ~/.codex/skills/lanshu-create-ai-presenter-video
+  ~/.claude/skills/lanshu-create-ai-presenter-video
 ```
 
-安装后的 Skill 路径：
+Run `git pull` in the installed directory to update. If you use several harnesses, clone once into each skills directory.
+
+**Agents without Agent Skills support.** Clone the repository anywhere, then start the session with:
 
 ```text
-~/.codex/skills/lanshu-create-ai-presenter-video
+Read /path/to/lanshu-create-ai-presenter-video/SKILL.md and follow its workflow exactly.
 ```
 
-## 文件结构
+## Quick start
+
+Most harnesses select the skill automatically from its description, so you can describe the video you want:
 
 ```text
-lanshu-create-ai-presenter-video/
-├── SKILL.md
-├── README.md
-├── agents/
-│   └── openai.yaml
-├── assets/
-│   └── job.template.json
-├── references/
-│   ├── generation.md
-│   ├── editing.md
-│   └── qa-recovery.md
-└── scripts/
-    ├── init_job.py
-    ├── preflight.py
-    └── finalize_delivery.sh
+Turn this script and portrait into a 30-second 16:9 presenter video with live captions.
 ```
 
-## 三份参考文档分别负责什么
+Use the explicit invocation from the table above to guarantee selection. The skill works in the language of your request.
 
-- `generation.md`：输入检查、文案、声音、能力选型、付费生成、人物提示词与一致性。
-- `editing.md`：时间轴、开场和结尾、字幕预设、人物侧关键词动效、封面与导出。
-- `qa-recovery.md`：技术验收、人工验收和常见故障修复。
-
-Codex 只在进入对应阶段时读取相关文档，减少上下文占用。
-
-## 快速使用
-
-在对话中直接说：
-
-```text
-使用 $lanshu-create-ai-presenter-video，把这份文案和人物图做成一条 16:9、30 秒、有实时字幕的数字人讲解视频。
-```
-
-也可以先初始化标准任务目录：
+The agent runs the bundled scripts itself. To set up a job manually, point `SKILL_DIR` at your installation:
 
 ```bash
-SKILL_DIR=~/.codex/skills/lanshu-create-ai-presenter-video
+SKILL_DIR=~/.claude/skills/lanshu-create-ai-presenter-video
 
 python3 "$SKILL_DIR/scripts/init_job.py" \
   --job-dir ~/Videos/my-presenter-video \
   --presenter-image ~/Pictures/presenter.png \
-  --topic "视频主题" \
+  --topic "Context engineering in one minute" \
   --duration 60 \
   --aspect 9:16 \
   --rights-confirmed \
   --adult-presenter-confirmed
 ```
 
-随后查看并补全 `job.json` 中的人工检查与远程上传许可，再运行：
+Complete the manual review and upload approvals in `job.json`, then run preflight:
 
 ```bash
 python3 "$SKILL_DIR/scripts/preflight.py" ~/Videos/my-presenter-video/job.json
 ```
 
-## 运行环境
+After each stage, record its artifacts in `job.json` and let the checker compute the state:
 
-- Codex 或兼容本地 Skill 的 Agent 环境。
-- Python `3.9+`。
-- `FFmpeg` 与 `ffprobe`。
-- Bash、`jq`、`awk` 和 `sed`。
-- 至少一种当前环境可调用的视频生成、语音生成与口型同步能力。
-
-## 核心工作方式
-
-```text
-主题或文案 + 授权人物图
-        ↓
-锁定文案与完整配音
-        ↓
-低成本人物试片
-        ↓
-生成连续数字人主素材
-        ↓
-按同一条音频时间轴剪辑
-        ↓
-添加字幕、关键词动效和封面
-        ↓
-口型、人物、声音与画面验收
-        ↓
-输出母版、分享版和 QA 报告
+```bash
+python3 "$SKILL_DIR/scripts/check_state.py" ~/Videos/my-presenter-video/job.json --write
 ```
 
-完整配音是全片的时间基准。人物视频、字幕、镜头、关键词与转场都按照这条音频定位，可以减少口型漂移和片段衔接问题。
+## Scripts
 
-## 默认设置
+| Script | Purpose |
+|---|---|
+| `init_job.py` | Creates a self-contained job directory, copies all inputs into it, and records job-relative paths. |
+| `preflight.py` | Validates inputs, manual review, and approvals; separates local errors from remote-generation blockers. |
+| `plan_segments.py` | Splits the locked narration at real ASR pauses when a provider caps request or reference-audio duration. |
+| `check_state.py` | Computes the evidence-backed production state and exits non-zero when the recorded state overclaims. |
+| `finalize_delivery.sh` | Builds master and share encodes, verifies full decode, delivered loudness, and black or frozen frames, then publishes them with a contact sheet and report. |
 
-- 竖屏 `9:16`、`1080×1920`、`30fps`。
-- 主题生成的视频通常控制在 45–75 秒。
-- 没有授权声音样本时使用合适的库存声音。
-- 默认包含清晰开场、2–4 个内容节拍和简洁结尾。
-- 音乐与商业引导按需求添加。
-- 发布响度目标约为 `-16 LUFS`。
+## Reference guides
 
-## 安全和成本边界
+The agent loads each guide only when it reaches the matching stage, which keeps context usage low.
 
-- 远程上传前确认图片使用权和成年人物状态。
-- 克隆声音前确认声音授权。
-- 首次付费生成前说明上传内容、生成时长、价格依据、试片方案和重试上限。
-- 任务中断后优先查询已有任务 ID，避免重复扣费。
-- 连续三个付费候选失败后停止并总结问题。
+| Guide | Covers |
+|---|---|
+| [`generation.md`](references/generation.md) | Intake, script and narration, capability selection, billing gates, segment planning, presenter prompts |
+| [`editing.md`](references/editing.md) | Timeline contract, segment seams, openings and closes, captions, keyword graphics, preview and export |
+| [`qa-recovery.md`](references/qa-recovery.md) | Acceptance gates and recovery playbooks for lip-sync, identity, seams, loudness, and remote tasks |
 
-## 开源与隐私
+## Repository layout
 
-- 仓库不保存 API 密钥、访问令牌、签名下载地址或用户素材。
-- 任务级请求记录需要移除凭据与临时 URL 后再提交。
-- 预检与交付报告只保存文件名，不写入开发者机器的绝对路径。
-- 项目使用 [MIT License](LICENSE)，可以自由使用、修改和分发。
+```text
+lanshu-create-ai-presenter-video/
+├── SKILL.md                 # Skill entry point: metadata and workflow
+├── README.md
+├── README.zh-CN.md
+├── agents/
+│   └── openai.yaml          # Codex display metadata; other harnesses ignore it
+├── assets/
+│   └── job.template.json    # Job manifest template
+├── references/              # Stage guides loaded on demand
+├── scripts/                 # Job setup, gates, segment planning, delivery
+└── tests/
+    └── smoke.sh             # End-to-end test with synthetic media
+```
 
-## 贡献
+## Defaults
 
-欢迎通过 Issue 提交使用反馈，也欢迎用 Pull Request 改进工作流、兼容性和质量检查。
+| Setting | Default |
+|---|---|
+| Format | 9:16, 1080×1920, 30 fps |
+| Duration | 45–75 seconds from a topic; natural length for a supplied script |
+| Voice | Stock voice unless an authorized sample is provided |
+| Structure | Hook, 2–4 content beats, concise close |
+| Music and call to action | Off unless requested |
+| Loudness | −16 LUFS ±0.5 LU, true peak ≤ −1 dBTP; override with `PROGRAM_LUFS` |
+
+## Safety and cost controls
+
+- Image rights and adult-presenter status are confirmed before any upload.
+- Voice cloning requires explicit authorization, and a voice is never inferred from an image.
+- Before the first paid call, the agent states the uploads, requested seconds, known price, pilot size, and retry ceiling.
+- When a provider caps duration, the quote uses the total requested seconds from the segment plan.
+- Interrupted remote tasks are polled by their saved task ID before any resubmission.
+- Work stops after three rejected paid candidates, with a summary of the recurring failure and remaining options.
+
+## Privacy
+
+- The repository contains no API keys, access tokens, signed URLs, or user media.
+- Provider request records are stored without credentials or expiring URLs.
+- Preflight and delivery reports store file names or job-relative paths only, never absolute machine paths.
+
+## Testing
+
+The smoke test drives a synthetic job from `intake` to `verified` without calling any remote service. It requires FFmpeg, `jq`, and Python 3.9+:
+
+```bash
+bash tests/smoke.sh
+```
+
+CI runs metadata validation, a portability check, and the smoke test on every push and pull request.
+
+## Contributing
+
+Issues and pull requests are welcome. Reports from different harnesses and providers are especially valuable, as are improvements to the workflow, compatibility, and quality checks.
+
+## Author
+
+Created and maintained by **岚叔 (Lanshu)**. Follow on X for updates and new AI video workflows: **[@LufzzLiz](https://x.com/LufzzLiz)**.
+
+## License
+
+Released under the [MIT License](LICENSE).
