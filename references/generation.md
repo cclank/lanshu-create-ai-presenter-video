@@ -66,6 +66,17 @@ Before the first remote or paid call, state:
 
 Generate the smallest useful pilot. Continue to a full run only after technical checks and visual review pass. Do not generate a long clip when the edit uses only a short range.
 
+## Duration caps and segments
+
+Prefer one continuous audio-driven presenter source. When the provider caps request duration or reference-audio length below the narration length, split by the narration's real pauses:
+
+- Use the smallest of the provider's video-duration and reference-audio limits as the cap.
+- Normalize the final-audio ASR sentence or word timings to `[{"start": s, "end": s, "text": "..."}]` and run `scripts/plan_segments.py`. It cuts only inside pauses of at least `0.25s`, takes the latest usable pause so the edit has as few seams as possible, and keeps every segment at least `2s` long.
+- With `--whole-seconds`, it prefers an integer cut that lies inside a pause; otherwise it cuts at the pause midpoint and requests the rounded-up seconds. Do not move a cut onto an integer that falls inside speech to save a billed second.
+- Send each segment exactly its planned audio slice. Reuse the same image, seed, framing, wardrobe, light, and motion constraints for the pilot and every segment.
+- Quote `total_requested_seconds` from the plan in the billing statement. Record the plan in `plan.segment_plan` and task IDs keyed by range, such as `"00-10": "<task id>"`.
+- Generated clips often run a few frames longer than requested. Trim them through authored duration and source offset; never time-stretch a presenter clip.
+
 ## Presenter prompt structure
 
 Write prompts in this order:

@@ -40,6 +40,7 @@
     "closing_target_s": 5,
     "chapters": [],
     "requested_generation_seconds": 0,
+    "segment_plan": "",
     "estimated_cost": null,
     "price_evidence_date": "",
     "pilot_approved": false,

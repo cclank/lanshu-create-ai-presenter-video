@@ -18,7 +18,7 @@ Read this file before accepting generated media or delivery, and whenever a prod
 - Sections have consistent loudness, commonly near `-17 LUFS`.
 - Assembled program loudness is commonly `-16 ± 0.5 LUFS` unless the destination specifies another target.
 - No clipped words, doubled tracks, echo, clicks, unexpected silence, or truncated tail.
-- Measure the final stereo file; section measurements alone are insufficient.
+- Measure the final stereo file; section measurements alone are insufficient. The finalizer records `master_loudness` and `share_loudness` and refuses to publish outside `±0.5 LU` or above `-1.0 dBTP`.
 
 ### Presenter
 
@@ -28,6 +28,7 @@ Read this file before accepting generated media or delivery, and whenever a prod
 - Mouth follows names, numbers, English tokens, plosives, and phrase endings.
 - Blinks are sparse and bilateral; gestures occur once and settle; hands remain plausible and away from the face.
 - Tail ends with a settled face and resting mouth.
+- Segmented output keeps identity, framing, and light continuous at every seam `±0.1s`.
 
 ### Composition and delivery
 
@@ -35,6 +36,7 @@ Read this file before accepting generated media or delivery, and whenever a prod
 - Opening, callouts, captions, watermark, progress, and platform safe zones remain compatible.
 - Master and share files have the expected duration, dimensions, frame rate, codec, pixel format, and audio rate.
 - Both files fully decode.
+- Every `freeze_events` entry in the delivery report corresponds to an intentional still shot.
 - Contact sheet covers opening, chapters, emphasis graphics, close, and final frame.
 - Watch the complete video at normal speed before delivery.
 
@@ -55,6 +57,14 @@ Use one continuous audio-driven source with source-time slices. When splitting i
 ### Body motion works but mouth is late
 
 Keep the accepted motion plate. Apply lip-sync repair with the exact locked audio and no duration extension. Check speech anchors at numbers, plosives, English tokens, and final syllables.
+
+### Visible jump at a segment seam
+
+Confirm each segment used its planned audio slice and identical generation settings. Mask small expression or pose differences with a short opacity breath, a layout change, or supporting media. Regenerate only the affected segment when identity, framing, or light differs structurally.
+
+### Finalizer rejects loudness
+
+Nothing was published. Confirm every video source is muted and narration is not routed twice, then re-render. When the destination requires another target, rerun with `PROGRAM_LUFS` set to it.
 
 ### Face, glasses, hands, or light drift
 

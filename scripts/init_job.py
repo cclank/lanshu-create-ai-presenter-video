@@ -6,12 +6,30 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import shutil
 import sys
 from pathlib import Path
 
 
 SKILL_DIR = Path(__file__).resolve().parent.parent
 TEMPLATE = SKILL_DIR / "assets" / "job.template.json"
+JOB_DIRECTORIES = (
+    "docs",
+    "assets/source",
+    "assets/audio/reference",
+    "assets/audio/raw",
+    "assets/audio/final",
+    "assets/video/candidates",
+    "assets/video/selected",
+    "assets/video/render",
+    "assets/captions",
+    "qa/requests",
+    "qa/asr",
+    "qa/contacts",
+    "qa/reports",
+    "renders",
+    "outputs",
+)
 ASPECT_DEFAULTS = {
     "9:16": (1080, 1920),
     "16:9": (1920, 1080),
@@ -20,11 +38,23 @@ ASPECT_DEFAULTS = {
 }
 
 
-def absolute_existing(path_text: str, label: str) -> str:
+def existing_file(path_text: str, label: str) -> Path:
     path = Path(path_text).expanduser().resolve()
     if not path.is_file():
         raise ValueError(f"{label} does not exist or is not a file: {path}")
-    return str(path)
+    return path
+
+
+def copy_into_job(source: Path, job_dir: Path, relative_dir: str) -> str:
+    """Copy an input into the job and return its job-relative path."""
+    destination_dir = job_dir / relative_dir
+    destination = destination_dir / source.name
+    counter = 2
+    while destination.exists():
+        destination = destination_dir / f"{source.stem}-{counter}{source.suffix}"
+        counter += 1
+    shutil.copy2(source, destination)
+    return destination.relative_to(job_dir).as_posix()
 
 
 def slugify(value: str) -> str:
@@ -71,27 +101,39 @@ def main() -> int:
         if min(width, height) < 256 or max(width, height) > 7680:
             raise ValueError("custom dimensions must be between 256 and 7680 pixels")
 
+    presenter_image = existing_file(args.presenter_image, "presenter image")
+    script = existing_file(args.script, "script") if args.script else None
+    voice_sample = (
+        existing_file(args.voice_sample, "voice sample") if args.voice_sample else None
+    )
+    supporting_media = [
+        existing_file(item, "supporting media") for item in args.supporting_media
+    ]
+
     job_dir = Path(args.job_dir).expanduser().resolve()
     if job_dir.exists() and any(job_dir.iterdir()):
         raise ValueError(f"job directory must be absent or empty: {job_dir}")
     job_dir.mkdir(parents=True, exist_ok=True)
+    for relative in JOB_DIRECTORIES:
+        (job_dir / relative).mkdir(parents=True, exist_ok=True)
 
+    # Copy inputs so the job stays self-contained and portable; originals stay untouched.
     manifest = json.loads(TEMPLATE.read_text(encoding="utf-8"))
     manifest["job_id"] = slugify(job_dir.name)
     manifest["input"]["topic"] = (args.topic or "").strip()
     manifest["input"]["script_path"] = (
-        absolute_existing(args.script, "script") if args.script else ""
+        copy_into_job(script, job_dir, "assets/source") if script else ""
     )
-    manifest["input"]["presenter_image"] = absolute_existing(
-        args.presenter_image, "presenter image"
+    manifest["input"]["presenter_image"] = copy_into_job(
+        presenter_image, job_dir, "assets/source"
     )
     manifest["input"]["voice_sample"] = (
-        absolute_existing(args.voice_sample, "voice sample")
-        if args.voice_sample
+        copy_into_job(voice_sample, job_dir, "assets/audio/reference")
+        if voice_sample
         else ""
     )
     manifest["input"]["supporting_media"] = [
-        absolute_existing(item, "supporting media") for item in args.supporting_media
+        copy_into_job(item, job_dir, "assets/source") for item in supporting_media
     ]
     manifest["input"]["rights_confirmed"] = args.rights_confirmed
     manifest["input"]["adult_presenter_confirmed"] = args.adult_presenter_confirmed
@@ -113,26 +155,6 @@ def main() -> int:
             "cta": args.cta,
         }
     )
-
-    directories = [
-        "docs",
-        "assets/source",
-        "assets/audio/reference",
-        "assets/audio/raw",
-        "assets/audio/final",
-        "assets/video/candidates",
-        "assets/video/selected",
-        "assets/video/render",
-        "assets/captions",
-        "qa/requests",
-        "qa/asr",
-        "qa/contacts",
-        "qa/reports",
-        "renders",
-        "outputs",
-    ]
-    for relative in directories:
-        (job_dir / relative).mkdir(parents=True, exist_ok=True)
 
     job_path = job_dir / "job.json"
     job_path.write_text(

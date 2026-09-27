@@ -20,6 +20,8 @@ The locked narration defines duration and semantic boundaries. Every clip keeps 
 
 When an opening changes length, shift authored starts while preserving presenter source offsets. Keep video sources muted and use approved external narration as the program clock. Prefer one continuous presenter source and source-time slices over regenerated chapter clips.
 
+When the presenter was generated in segments, place each one at its planned `authored_start_s` with source start `0` and authored duration equal to its audio slice. Independent segments leave small expression or pose differences at each seam. Mask every seam with a short opacity breath of about `0.2s`, a planned layout or shape change, or a cut to supporting media, and inspect frames at seam `±0.1s`.
+
 Use hard cuts at settled semantic pauses. Add transitions only when they clarify structure. Preserve a quiet tail so the last word, gesture, and mouth position finish naturally.
 
 ## Opening, body, and close
@@ -62,4 +64,4 @@ Use a deterministic compositor available in the environment. For HyperFrames:
 5. open the final Studio preview and obtain approval before rendering;
 6. render at delivery quality only after approval.
 
-Measure the assembled stereo program after rendering. Mono narration duplicated into stereo can measure about 3 LU louder, so perform final program normalization from the rendered file.
+Measure the assembled stereo program after rendering. Mono narration duplicated into stereo can measure about 3 LU louder, so perform final program normalization from the rendered file. `finalize_delivery.sh` does this and verifies the delivered master and share loudness before publishing either file.
