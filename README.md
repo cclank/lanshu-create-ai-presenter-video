@@ -5,21 +5,29 @@
 [![Agent Skills](https://img.shields.io/badge/Agent_Skills-SKILL.md-111827)](https://agentskills.io)
 ![Harness Neutral](https://img.shields.io/badge/Harness-Neutral-8B5CF6)
 ![Provider Neutral](https://img.shields.io/badge/Provider-Neutral-0EA5E9)
+![Routes: Presenter | Styled](https://img.shields.io/badge/Routes-Presenter_%7C_Styled-0EA5E9)
+[![Explainer Styles: 9](https://img.shields.io/badge/Explainer_Styles-9-E8590C)](explainer/STYLES.md)
+[![Rendered with HyperFrames](https://img.shields.io/badge/Rendered_with-HyperFrames-2563EB)](https://hyperframes.heygen.com)
+<br>
 [![Validate Skill](https://github.com/cclank/lanshu-create-ai-presenter-video/actions/workflows/validate.yml/badge.svg)](https://github.com/cclank/lanshu-create-ai-presenter-video/actions/workflows/validate.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-F4C430.svg)](LICENSE)
 [![Python 3.9+](https://img.shields.io/badge/Python-3.9%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![FFmpeg Required](https://img.shields.io/badge/FFmpeg-Required-007808?logo=ffmpeg&logoColor=white)](https://ffmpeg.org/)
+[![Node.js for the styled route](https://img.shields.io/badge/Node.js-styled_route-5FA04E?logo=nodedotjs&logoColor=white)](https://nodejs.org/)
 [![GitHub stars](https://img.shields.io/github/stars/cclank/lanshu-create-ai-presenter-video?style=flat)](https://github.com/cclank/lanshu-create-ai-presenter-video/stargazers)
-[![Follow on X](https://img.shields.io/badge/Follow-@LufzzLiz-000000?logo=x&logoColor=white)](https://x.com/LufzzLiz)
+<br>
+[![X @LufzzLiz](https://img.shields.io/badge/X-@LufzzLiz-000000?logo=x&logoColor=white)](https://x.com/LufzzLiz)
+[![Author: 岚叔 Lanshu](https://img.shields.io/badge/Author-%E5%B2%9A%E5%8F%94_Lanshu-C2410C)](https://x.com/LufzzLiz)
 
-> Turn a topic or script and one authorized portrait into a verified, publish-ready AI presenter video, driven by the coding agent you already use.
+> Turn a topic or script into a verified, publish-ready explainer video — presented by a digital human from one authorized portrait, or acted out on screen in one of nine visual styles — driven by the coding agent you already use.
 
-`lanshu-create-ai-presenter-video` is an [Agent Skill](https://agentskills.io) that takes an AI agent through the full production of a talking-presenter video: script, narration, presenter generation, lip-sync, captions and keyword motion graphics, editing, rendering, and quality assurance. Every stage is gated by evidence on disk, and nothing is delivered until the output passes decode and loudness checks.
+`lanshu-create-ai-presenter-video` is an [Agent Skill](https://agentskills.io) that takes an AI agent through the full production of an explainer video. On the **presenter route** that means script, narration, presenter generation, lip-sync, captions and keyword motion graphics, editing, rendering, and quality assurance. On the **styled route** the narration is performed scene by scene in one of nine visual styles, from a word-timed story to a rendered film. Every stage is gated by evidence on disk, and nothing is delivered until the output passes decode and loudness checks.
 
 ## Highlights
 
 - **Harness-neutral.** A standard `SKILL.md` that loads in Claude Code, Codex, Gemini CLI, Cursor, OpenCode, GitHub Copilot, and other Agent Skills clients. Any agent that can read files and run shell commands can follow it directly.
-- **Provider-neutral.** Voice, presenter video, lip-sync, and speech recognition are selected by capability at run time. Each job records the provider, model, parameters, and task IDs it actually used.
+- **Provider-neutral.** On the presenter route, voice, presenter video, lip-sync, and speech recognition are selected by capability at run time; each job records the provider, model, parameters, and task IDs it actually used. The styled route voices with MiniMax (word timestamps come from the voice engine) or takes narration you voiced or recorded elsewhere.
+- **Nine performed explainer styles.** Editorial, tech HUD, notebook, paper pop-up, pop comic, 3D one-take, drafting sheet, chalkboard, and clay town — each a reusable kit with a starter, so a new topic plays end to end in any style after a few commands, and the script is written for the chosen style.
 - **Audio-locked timeline.** The approved narration is the master clock for presenter motion, captions, cuts, and final duration, which keeps lip-sync and scene boundaries aligned.
 - **Evidence-gated workflow.** Eight production states, from `intake` to `verified`, computed from artifacts instead of declared by hand.
 - **Cost guardrails.** Pilot-first generation, an explicit billing statement before the first paid call, retry ceilings, and task-ID recovery to avoid duplicate charges.
@@ -57,6 +65,8 @@ bringing your digital human into a styled film.
 
 ## How it works
 
+Presenter route:
+
 ```text
 Topic or script + authorized portrait
         │
@@ -79,6 +89,24 @@ Technical and visual QA
 Master, share copy, contact sheet, and delivery report
 ```
 
+Styled route:
+
+```text
+Topic or script ──► choose a style (menu + gallery, or drafts in all nine)
+        │
+        ▼
+Script written for the style ──► voice with word timestamps (or your own narration)
+        │
+        ▼
+Draft film from the style's starter: captions, chapters, closing line, recap, sound
+        │
+        ▼
+Storyboard ──► every line performed on screen, on its words
+        │
+        ▼
+QA (check, stillness, cover) ──► render ──► master, share copy, subtitles, delivery report
+```
+
 Each state requires evidence before a job may advance. `check_state.py` computes the state from the job's artifacts:
 
 | State | Evidence required |
@@ -92,12 +120,14 @@ Each state requires evidence before a job may advance. `check_state.py` computes
 | `rendered` | Decodable render with video and audio |
 | `verified` | Master, share copy, and a delivery report with passing output loudness |
 
+On the styled route, `audio_locked` also needs a voiced `story.json` (a `--dry` draft never counts), and
+`presenter_generated` is reached by the performed film and its visual review instead of a presenter video.
+
 ## Requirements
 
 - An Agent Skills harness, or any coding agent that can read files and run shell commands.
 - Python 3.9+, FFmpeg with `ffprobe`, Bash, `jq`, `awk`, and `sed`.
-- Access to at least one voice synthesis, presenter video generation, and lip-sync capability: a cloud CLI, an API, or a local model.
-- Optional: a deterministic timeline compositor such as HyperFrames for captions, motion graphics, and final rendering.
+- For the presenter route: access to at least one voice synthesis, presenter video generation, and lip-sync capability — a cloud CLI, an API, or a local model — and optionally a deterministic timeline compositor such as HyperFrames for captions, motion graphics, and final rendering.
 - For the styled explainer: Node.js (HyperFrames runs with `npx`), `rsync`, Python with `numpy` (sound bed; point
   `PYTHON` at it), and a MiniMax API key (`MINIMAX_API_KEY`) for the voice and its word timestamps — or your own
   recorded narration.
@@ -171,6 +201,16 @@ After each stage, record its artifacts in `job.json` and let the checker compute
 python3 "$SKILL_DIR/scripts/check_state.py" ~/Videos/my-presenter-video/job.json --write
 ```
 
+A styled explainer by hand, from a job directory (`X=$SKILL_DIR/explainer`):
+
+```bash
+python3 "$SKILL_DIR/scripts/init_job.py" --job-dir . --route styled --explainer-style v8-chalkboard --topic "RAG in 40 seconds"
+python3 "$X/tools/story.py" story              # story/script.md → voice + word times → story/story.json
+bash "$X/tools/new_film.sh" v8-chalkboard story film   # a playable draft; perform each line in film/beats.js
+python3 "$X/tools/qa.py" film qa/film          # check, stillness, snapshots, cover
+bash "$X/tools/render.sh" film rag outputs     # master, share copy, subtitles
+```
+
 ## Scripts
 
 | Script | Purpose |
@@ -180,6 +220,19 @@ python3 "$SKILL_DIR/scripts/check_state.py" ~/Videos/my-presenter-video/job.json
 | `plan_segments.py` | Splits the locked narration at real ASR pauses when a provider caps request or reference-audio duration. |
 | `check_state.py` | Computes the evidence-backed production state and exits non-zero when the recorded state overclaims. |
 | `finalize_delivery.sh` | Builds master and share encodes, verifies full decode, delivered loudness, and black or frozen frames, then publishes them with a contact sheet and report. |
+
+## Explainer tools
+
+Under `explainer/tools/`, used on the styled route:
+
+| Tool | Purpose |
+|---|---|
+| `story.py` | `script.md` → MiniMax voice per line with the engine's word timestamps → `story.json`; `--audio` for your own narration, `--dry` for a silent draft, `--check` for the plan and estimated length. |
+| `new_film.sh` / `new_topic.sh` | A playable film from a style's starter (or drafts in all nine styles at once). |
+| `docs.py` | Script, beat sheet, timeline, and a storyboard table from the story. |
+| `qa.py` | `hyperframes check`, snapshots at every chapter, stillness pairs, a cover frame, and a composition report. |
+| `render.sh` | Render, finalize with `finalize_delivery.sh`, write subtitles (SRT); `DRAFT=1` makes a 720p review copy for a phone. |
+| `srt.py`, `still_grid.py`, `fonts.py`, `sync.sh`, `stamp.py` | Subtitles, a 3×3 style comparison still, font subsets, and project plumbing. |
 
 ## Reference guides
 
@@ -191,6 +244,9 @@ The agent loads each guide only when it reaches the matching stage, which keeps 
 | [`editing.md`](references/editing.md) | Timeline contract, segment seams, openings and closes, captions, keyword graphics, preview and export |
 | [`qa-recovery.md`](references/qa-recovery.md) | Acceptance gates and recovery playbooks for lip-sync, identity, seams, loudness, and remote tasks |
 | [`styled-explainer.md`](references/styled-explainer.md) | The styled explainer route: story pipeline, style starters, performing scenes, and an optional method for adding a digital human |
+| [`explainer/STYLES.md`](explainer/STYLES.md) | The style menu and gallery, common words → styles, and how to write the narration for each style |
+| [`explainer/KITS.md`](explainer/KITS.md) | The kit contract, the aesthetic baseline, the starters, and the tools |
+| [`explainer/GOTCHAS.md`](explainer/GOTCHAS.md) | HyperFrames pitfalls met while building the styles |
 
 ## Repository layout
 
@@ -223,7 +279,7 @@ lanshu-create-ai-presenter-video/
 |---|---|
 | Format | 9:16, 1080×1920, 30 fps (styled explainer: 16:9, 1920×1080, 30 fps) |
 | Duration | 45–75 seconds from a topic; natural length for a supplied script |
-| Voice | Stock voice unless an authorized sample is provided |
+| Voice | Stock voice unless an authorized sample is provided; styled route: MiniMax `Chinese (Mandarin)_Reliable_Executive`, speed set per style |
 | Structure | Hook, 2–4 content beats, concise close |
 | Music and call to action | Off unless requested |
 | Loudness | −16 LUFS ±0.5 LU, true peak ≤ −1 dBTP; override with `PROGRAM_LUFS` |
@@ -236,6 +292,7 @@ lanshu-create-ai-presenter-video/
 - When a provider caps duration, the quote uses the total requested seconds from the segment plan.
 - Interrupted remote tasks are polled by their saved task ID before any resubmission.
 - Work stops after three rejected paid candidates, with a summary of the recurring failure and remaining options.
+- On the styled route the only paid call is the voice — one call per line, cached, so an edit re-voices only that line; drafts in all nine styles cost nothing more.
 
 ## Privacy
 
@@ -255,16 +312,18 @@ bash tests/smoke.sh
 bash tests/explainer_smoke.sh   # styled explainer; also needs Node.js and rsync
 ```
 
-CI runs metadata validation, a portability check, and the smoke test on every push and pull request.
+CI runs metadata validation, a portability check, syntax checks for the explainer engine, and both smoke tests on every push and pull request.
 
 ## Contributing
 
-Issues and pull requests are welcome. Reports from different harnesses and providers are especially valuable, as are improvements to the workflow, compatibility, and quality checks.
+Issues and pull requests are welcome. Reports from different harnesses and providers are especially valuable, as are improvements to the workflow, compatibility, and quality checks. To add a tenth explainer style, follow the kit contract in [`explainer/KITS.md`](explainer/KITS.md) and the starter brief in [`explainer/STARTER-BRIEF.md`](explainer/STARTER-BRIEF.md).
 
 ## Author
 
-Created and maintained by **岚叔 (Lanshu)**. Follow on X for updates and new AI video workflows: **[@LufzzLiz](https://x.com/LufzzLiz)**.
+Created and maintained by **岚叔 (Lanshu)**. Follow on X for updates and new AI video workflows:
+
+[![Follow on X](https://img.shields.io/badge/Follow_on_X-@LufzzLiz-000000?style=for-the-badge&logo=x&logoColor=white)](https://x.com/LufzzLiz)
 
 ## License
 
-Released under the [MIT License](LICENSE).
+Released under the [MIT License](LICENSE). Fonts, libraries, and services the explainer engine uses are listed in [`explainer/THIRD_PARTY.md`](explainer/THIRD_PARTY.md).
