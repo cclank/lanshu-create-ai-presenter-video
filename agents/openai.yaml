@@ -1,4 +1,4 @@
 interface:
-  display_name: "岚叔 · 通用数字人视频制作"
-  short_description: "从主题或文案与授权人物图制作并验收完整数字人讲解视频"
-  default_prompt: "Use $lanshu-create-ai-presenter-video to turn my topic or script and authorized presenter image into a verified publish-ready presenter video."
+  display_name: "岚叔 · 通用数字人与讲解视频制作"
+  short_description: "从主题或文案制作并验收完整讲解视频：数字人口播，或九种风格的动画讲解"
+  default_prompt: "Use $lanshu-create-ai-presenter-video to turn my topic or script into a verified publish-ready explainer video: help me choose between a digital-human presenter and a styled explainer."

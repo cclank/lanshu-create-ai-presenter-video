@@ -83,8 +83,23 @@ def main() -> int:
     if script_text:
         require_file(script_text, "script", job_dir, errors)
 
-    image = require_file(
-        str(input_data.get("presenter_image", "")), "presenter image", job_dir, errors
+    creative = job.get("creative", {})
+    route = str(creative.get("route") or "presenter")
+    if route not in ("presenter", "styled"):
+        errors.append(f"creative.route must be presenter or styled, not {route!r}")
+    has_presenter = route != "styled"
+    if route == "styled":
+        style = str(creative.get("explainer_style") or "")
+        kits = Path(__file__).resolve().parent.parent / "explainer" / "kits"
+        if not style or not (kits / style / "starter").is_dir():
+            errors.append(f"creative.explainer_style must name a style in explainer/kits, not {style!r}")
+        if (int(creative.get("width") or 0), int(creative.get("height") or 0)) != (1920, 1080):
+            errors.append("the styled route renders 1920x1080 (16:9)")
+
+    image = (
+        require_file(str(input_data.get("presenter_image", "")), "presenter image", job_dir, errors)
+        if has_presenter
+        else None
     )
     if image:
         try:
@@ -139,23 +154,28 @@ def main() -> int:
                 errors.append(f"could not decode supporting media: {path.name}")
     media["supporting_media"] = supporting_reports
 
-    if not input_data.get("rights_confirmed"):
+    if has_presenter and not input_data.get("rights_confirmed"):
         remote_blockers.append("rights_confirmed must be true before presenter synthesis")
-    if not input_data.get("adult_presenter_confirmed"):
+    if has_presenter and not input_data.get("adult_presenter_confirmed"):
         remote_blockers.append("adult_presenter_confirmed must be true before presenter synthesis")
     if not input_data.get("remote_upload_approved"):
-        remote_blockers.append("remote_upload_approved must be true before remote generation")
+        remote_blockers.append(
+            "remote_upload_approved must be true before remote generation"
+            if has_presenter
+            else "remote_upload_approved must be true before the script text is sent to a TTS provider "
+            "(not needed when the user supplies the narration and story.py --audio is used)"
+        )
+
 
     manual = job.get("manual_input_review", {})
     for key in ("image_viewed", "single_clear_face", "image_has_no_unwanted_text"):
-        if not manual.get(key):
+        if has_presenter and not manual.get(key):
             errors.append(f"manual_input_review.{key} must be true")
     if voice_value:
         for key in ("voice_sample_listened", "single_clear_speaker"):
             if not manual.get(key):
                 errors.append(f"manual_input_review.{key} must be true")
 
-    creative = job.get("creative", {})
     duration = float(creative.get("duration_target_s") or 0)
     if not 5 <= duration <= 1800:
         errors.append("creative.duration_target_s must be between 5 and 1800")

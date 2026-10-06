@@ -36,6 +36,18 @@ ASPECT_DEFAULTS = {
     "1:1": (1080, 1080),
     "4:5": (1080, 1350),
 }
+ROUTES = ("presenter", "styled")
+STYLES = (
+    "v1-editorial",
+    "v2-signal",
+    "v3-notebook",
+    "v4-paper",
+    "v5-comic",
+    "v6-cinematic",
+    "v7-drafting",
+    "v8-chalkboard",
+    "v9-clay",
+)
 
 
 def existing_file(path_text: str, label: str) -> Path:
@@ -65,7 +77,19 @@ def slugify(value: str) -> str:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--job-dir", required=True)
-    parser.add_argument("--presenter-image", required=True)
+    parser.add_argument(
+        "--route",
+        choices=ROUTES,
+        default="presenter",
+        help="presenter: digital-human video (default); styled: a performed explainer in one of the nine "
+        "explainer styles, no presenter",
+    )
+    parser.add_argument(
+        "--explainer-style",
+        choices=STYLES,
+        help="explainer style for the styled route (see explainer/STYLES.md)",
+    )
+    parser.add_argument("--presenter-image", help="required for the presenter route")
     source = parser.add_mutually_exclusive_group(required=True)
     source.add_argument("--topic")
     source.add_argument("--script", help="Existing local script file")
@@ -74,7 +98,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--language", default="auto")
     parser.add_argument("--audience", default="general")
     parser.add_argument("--duration", type=float, default=60.0)
-    parser.add_argument("--aspect", choices=sorted(ASPECT_DEFAULTS), default="9:16")
+    parser.add_argument(
+        "--aspect",
+        choices=sorted(ASPECT_DEFAULTS),
+        help="default 9:16 for the presenter route; the styled route is 16:9",
+    )
     parser.add_argument("--width", type=int)
     parser.add_argument("--height", type=int)
     parser.add_argument("--fps", type=int, choices=(24, 25, 30, 50, 60), default=30)
@@ -90,6 +118,15 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
+    styled = args.route == "styled"
+    if not styled and not args.presenter_image:
+        raise ValueError("--presenter-image is required for the presenter route")
+    if styled and not args.explainer_style:
+        raise ValueError(f"--explainer-style is required for --route styled (one of: {', '.join(STYLES)})")
+    if styled and args.aspect not in (None, "16:9"):
+        raise ValueError("the styled route renders 16:9 (1920x1080); omit --aspect or pass 16:9")
+    if args.aspect is None:
+        args.aspect = "16:9" if styled else "9:16"
     if not 5 <= args.duration <= 1800:
         raise ValueError("--duration must be between 5 and 1800 seconds")
     if (args.width is None) != (args.height is None):
@@ -101,7 +138,9 @@ def main() -> int:
         if min(width, height) < 256 or max(width, height) > 7680:
             raise ValueError("custom dimensions must be between 256 and 7680 pixels")
 
-    presenter_image = existing_file(args.presenter_image, "presenter image")
+    presenter_image = (
+        existing_file(args.presenter_image, "presenter image") if args.presenter_image else None
+    )
     script = existing_file(args.script, "script") if args.script else None
     voice_sample = (
         existing_file(args.voice_sample, "voice sample") if args.voice_sample else None
@@ -124,8 +163,8 @@ def main() -> int:
     manifest["input"]["script_path"] = (
         copy_into_job(script, job_dir, "assets/source") if script else ""
     )
-    manifest["input"]["presenter_image"] = copy_into_job(
-        presenter_image, job_dir, "assets/source"
+    manifest["input"]["presenter_image"] = (
+        copy_into_job(presenter_image, job_dir, "assets/source") if presenter_image else ""
     )
     manifest["input"]["voice_sample"] = (
         copy_into_job(voice_sample, job_dir, "assets/audio/reference")
@@ -150,12 +189,16 @@ def main() -> int:
             "width": width,
             "height": height,
             "fps": args.fps,
-            "style": args.style,
+            "style": f"explainer style {args.explainer_style}" if styled else args.style,
+            "route": args.route,
+            "explainer_style": args.explainer_style or "",
             "watermark": args.watermark,
             "cta": args.cta,
         }
     )
 
+    if styled:
+        manifest["voice"]["rate"] = 1.1   # the styled route's story.py voices at speed 1.1 by default
     job_path = job_dir / "job.json"
     job_path.write_text(
         json.dumps(manifest, ensure_ascii=False, indent=2) + "\n",

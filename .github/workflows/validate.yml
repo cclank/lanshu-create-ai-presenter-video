@@ -27,11 +27,19 @@ jobs:
           for script in scripts/*.py; do python3 "$script" --help >/dev/null; done
           bash -n scripts/finalize_delivery.sh
           bash -n tests/smoke.sh
+          bash -n tests/explainer_smoke.sh
           python3 -m json.tool assets/job.template.json >/dev/null
+
+      - name: Validate the explainer engine
+        run: |
+          find explainer -name '*.py' -print0 | xargs -0 python3 -m py_compile
+          find explainer -name '*.sh' -print0 | xargs -0 -n1 bash -n
+          find explainer \( -name '*.js' -o -name '*.mjs' \) -print0 | xargs -0 -n1 node --check
+          for story in explainer/stories/*/story.json; do python3 -m json.tool "$story" >/dev/null; done
 
       - name: Check repository portability
         run: |
-          if grep -R -n '/Users/' README.md README.zh-CN.md SKILL.md agents assets references scripts tests; then
+          if grep -R -n '/Users/' README.md README.zh-CN.md SKILL.md agents assets references scripts tests explainer; then
             echo 'Machine-specific home path found.' >&2
             exit 1
           fi
@@ -52,3 +60,6 @@ jobs:
 
       - name: Run end-to-end smoke test
         run: bash tests/smoke.sh
+
+      - name: Run styled explainer smoke test
+        run: bash tests/explainer_smoke.sh

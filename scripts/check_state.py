@@ -108,9 +108,22 @@ def content_locked(evidence: Evidence) -> list[str]:
 
 
 def audio_locked(evidence: Evidence) -> list[str]:
-    return evidence.media("artifacts", "final_audio", video=False, audio=True) + evidence.document(
+    missing = evidence.media("artifacts", "final_audio", video=False, audio=True) + evidence.document(
         "qa", "asr_report"
     )
+    if evidence.section("creative").get("route") == "styled":
+        path, problem = evidence.file("artifacts", "story")
+        if problem:
+            missing.append(problem)
+        else:
+            try:
+                story = json.loads(path.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                story = {}
+                missing.append("artifacts.story is not a readable story.json")
+            if story.get("draft"):
+                missing.append("artifacts.story is a --dry draft; voice it with story.py before locking audio")
+    return missing
 
 
 def visual_plan_locked(evidence: Evidence) -> list[str]:
@@ -120,7 +133,21 @@ def visual_plan_locked(evidence: Evidence) -> list[str]:
     return missing
 
 
+def styled_film_ready(evidence: Evidence) -> list[str]:
+    """For the styled route (no presenter) this state means: the explainer film project exists and was reviewed."""
+    missing = evidence.document("artifacts", "story")
+    value = str(evidence.section("artifacts").get("film_project") or "").strip()
+    if not value:
+        missing.append("artifacts.film_project is not recorded (the explainer film's project directory)")
+    elif not (evidence.resolve(value) / "index.html").is_file():
+        missing.append(f"artifacts.film_project has no index.html: {portable_name(value)}")
+    missing += evidence.document("qa", "manual_visual_review")
+    return missing
+
+
 def presenter_generated(evidence: Evidence) -> list[str]:
+    if evidence.section("creative").get("route") == "styled":
+        return styled_film_ready(evidence)
     missing = []
     if not evidence.section("capabilities").get("main_presenter"):
         missing.append("capabilities.main_presenter must record the provider, model, and task IDs")

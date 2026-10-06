@@ -25,12 +25,32 @@
 - **Cost guardrails.** Pilot-first generation, an explicit billing statement before the first paid call, retry ceilings, and task-ID recovery to avoid duplicate charges.
 - **Verified delivery.** Master and share encodes are fully decoded and loudness-checked before any file is published.
 
+## Two routes
+
+| Route | The video | You provide | Paid generation | Format |
+|---|---|---|---|---|
+| **Presenter** | A digital human presents; captions and keyword graphics support it | Topic or script + authorized portrait | Voice + presenter video | Any; 9:16 by default |
+| **Styled explainer** | No presenter: every narrated phrase is acted out on screen in one of nine visual styles | Topic or script (or your own recorded narration) | Voice only (none with your own narration) | 16:9 |
+
+The agent infers the route from your request or asks once, with the style gallery. The nine styles share one
+contract — word-timed captions, chapter chips, a performed closing line, a one-frame recap — and differ in how ideas are
+acted out: editorial paper, tech HUD, notebook and pen, paper pop-up book, pop comic, 3D one-take, drafting sheet,
+chalkboard, and a clay town. Below is the same moment of the bundled KV cache explainer in all nine:
+
+![The same moment of the KV cache explainer in nine styles](explainer/gallery/nine-styles-kv-cache.jpg)
+
+A new topic becomes a playable draft in any style in a few commands — narration, word timing, captions, chapters,
+closing line, recap, and sound are generated; the agent then performs each line's scene. See
+[`explainer/STYLES.md`](explainer/STYLES.md) to choose a style and
+[`references/styled-explainer.md`](references/styled-explainer.md) for the workflow — including an optional method for
+bringing your digital human into a styled film.
+
 ## What you provide
 
 | Input | Required | Notes |
 |---|---|---|
 | Topic or finished script | Yes | A topic becomes a 45–75 second script; a supplied script keeps its natural length. |
-| Presenter image | Yes | One clear adult presenter, with confirmed rights to use the image. |
+| Presenter image | Presenter routes | One clear adult presenter, with confirmed rights to use the image. Not needed for the styled explainer. |
 | Voice sample | No | Used only with explicit cloning authorization; otherwise a stock voice is selected and recorded. |
 | Supporting media | No | Screen recordings, images, B-roll, or brand assets, used where they prove or clarify a spoken point. |
 | Delivery preferences | No | Platform, duration, aspect ratio, style, watermark, music, and call to action. |
@@ -78,6 +98,9 @@ Each state requires evidence before a job may advance. `check_state.py` computes
 - Python 3.9+, FFmpeg with `ffprobe`, Bash, `jq`, `awk`, and `sed`.
 - Access to at least one voice synthesis, presenter video generation, and lip-sync capability: a cloud CLI, an API, or a local model.
 - Optional: a deterministic timeline compositor such as HyperFrames for captions, motion graphics, and final rendering.
+- For the styled explainer: Node.js (HyperFrames runs with `npx`), `rsync`, Python with `numpy` (sound bed; point
+  `PYTHON` at it), and a MiniMax API key (`MINIMAX_API_KEY`) for the voice and its word timestamps — or your own
+  recorded narration.
 
 ## Installation
 
@@ -110,6 +133,13 @@ Most harnesses select the skill automatically from its description, so you can d
 
 ```text
 Turn this script and portrait into a 30-second 16:9 presenter video with live captions.
+```
+
+For a styled explainer you don't need to know the styles yet — ask, and the agent shows the nine with a picture and
+recommends a few for your topic:
+
+```text
+Make a 40-second explainer about RAG, no presenter. Which styles are there?
 ```
 
 Use the explicit invocation from the table above to guarantee selection. The skill works in the language of your request.
@@ -160,6 +190,7 @@ The agent loads each guide only when it reaches the matching stage, which keeps 
 | [`generation.md`](references/generation.md) | Intake, script and narration, capability selection, billing gates, segment planning, presenter prompts |
 | [`editing.md`](references/editing.md) | Timeline contract, segment seams, openings and closes, captions, keyword graphics, preview and export |
 | [`qa-recovery.md`](references/qa-recovery.md) | Acceptance gates and recovery playbooks for lip-sync, identity, seams, loudness, and remote tasks |
+| [`styled-explainer.md`](references/styled-explainer.md) | The styled explainer route: story pipeline, style starters, performing scenes, and an optional method for adding a digital human |
 
 ## Repository layout
 
@@ -174,15 +205,23 @@ lanshu-create-ai-presenter-video/
 │   └── job.template.json    # Job manifest template
 ├── references/              # Stage guides loaded on demand
 ├── scripts/                 # Job setup, gates, segment planning, delivery
+├── explainer/               # Styled explainer engine: core runtime, nine style kits + starters, tools, examples
+│   ├── STYLES.md            # Style chooser with the gallery
+│   ├── KITS.md              # The kit contract and tools
+│   ├── kits/<style>/        # One look per style, and starter/ = the film minus the topic
+│   ├── stories/             # Example scripts (KV cache) and a draft test story
+│   ├── examples/kv-cache/   # The finished KV cache film in each style
+│   └── tools/               # story.py, new_film.sh, qa.py, render.sh, srt.py, …
 └── tests/
-    └── smoke.sh             # End-to-end test with synthetic media
+    ├── smoke.sh             # End-to-end test with synthetic media
+    └── explainer_smoke.sh   # Styled route: intake, story, starter sync, state
 ```
 
 ## Defaults
 
 | Setting | Default |
 |---|---|
-| Format | 9:16, 1080×1920, 30 fps |
+| Format | 9:16, 1080×1920, 30 fps (styled explainer: 16:9, 1920×1080, 30 fps) |
 | Duration | 45–75 seconds from a topic; natural length for a supplied script |
 | Voice | Stock voice unless an authorized sample is provided |
 | Structure | Hook, 2–4 content beats, concise close |
@@ -203,6 +242,9 @@ lanshu-create-ai-presenter-video/
 - The repository contains no API keys, access tokens, signed URLs, or user media.
 - Provider request records are stored without credentials or expiring URLs.
 - Preflight and delivery reports store file names or job-relative paths only, never absolute machine paths.
+- The styled explainer downloads font subsets from Google Fonts and jsDelivr (only the characters used); word timing
+  comes from the voice provider's own timestamps, so no speech model is installed; snapshots are taken with
+  `--describe false`, so frames stay local.
 
 ## Testing
 
@@ -210,6 +252,7 @@ The smoke test drives a synthetic job from `intake` to `verified` without callin
 
 ```bash
 bash tests/smoke.sh
+bash tests/explainer_smoke.sh   # styled explainer; also needs Node.js and rsync
 ```
 
 CI runs metadata validation, a portability check, and the smoke test on every push and pull request.
