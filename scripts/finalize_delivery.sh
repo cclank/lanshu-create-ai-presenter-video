@@ -48,7 +48,9 @@ done
 
 TMP_ROOT="${TMPDIR:-/tmp}"
 TMP_DIR="$(mktemp -d "${TMP_ROOT%/}/presenter-finalize.XXXXXX")"
-trap 'rm -rf -- "$TMP_DIR"' EXIT INT TERM
+# A failed cleanup must not decide the exit status: under `set -e` a rejected rm would turn a
+# fully successful delivery into exit code 1. Clean up best-effort and stay quiet.
+trap 'rm -rf -- "$TMP_DIR" >/dev/null 2>&1 || true' EXIT INT TERM
 
 # Every output is built and verified here first; nothing reaches OUTPUT_DIR unless all checks pass.
 TMP_MASTER="$TMP_DIR/master.mp4"

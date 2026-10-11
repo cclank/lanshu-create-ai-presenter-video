@@ -10,7 +10,9 @@ SCRIPTS="$SKILL_DIR/scripts"
 X="$SKILL_DIR/explainer"
 TMP_ROOT="${TMPDIR:-/tmp}"
 WORK="$(mktemp -d "${TMP_ROOT%/}/explainer-smoke.XXXXXX")"
-trap 'rm -rf -- "$WORK"' EXIT INT TERM
+# A failed cleanup must not decide the exit status: under `set -e` a rejected rm would turn a
+# fully successful run into exit code 1. Clean up best-effort and stay quiet.
+trap 'rm -rf -- "$WORK" >/dev/null 2>&1 || true' EXIT INT TERM
 
 fail() { printf 'FAIL: %s\n' "$*" >&2; exit 1; }
 pass() { printf 'ok - %s\n' "$*"; }

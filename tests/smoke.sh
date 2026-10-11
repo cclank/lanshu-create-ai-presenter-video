@@ -7,7 +7,9 @@ SKILL_DIR="$(cd "$(dirname "$0")/.." && pwd -P)"
 SCRIPTS="$SKILL_DIR/scripts"
 TMP_ROOT="${TMPDIR:-/tmp}"
 WORK="$(mktemp -d "${TMP_ROOT%/}/presenter-smoke.XXXXXX")"
-trap 'rm -rf -- "$WORK"' EXIT INT TERM
+# A failed cleanup must not decide the exit status: under `set -e` a rejected rm would turn a
+# fully successful run into exit code 1. Clean up best-effort and stay quiet.
+trap 'rm -rf -- "$WORK" >/dev/null 2>&1 || true' EXIT INT TERM
 # The unique directory name survives symlink resolution such as /var -> /private/var.
 WORK_NAME="$(basename "$WORK")"
 
