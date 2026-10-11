@@ -34,7 +34,7 @@ set_json() {
 }
 
 state_of() {
-  python3 "$SCRIPTS/check_state.py" "$MANIFEST" | jq -r .evidenced_state
+  python3 "$SCRIPTS/check_state.py" "$MANIFEST" | jq -r .evidenced_state | tr -d '\r'
 }
 
 synth_video() {
@@ -54,8 +54,8 @@ python3 "$SCRIPTS/init_job.py" --job-dir "$JOB" \
   --presenter-image "$WORK/in/presenter.png" --script "$WORK/in/script.txt" \
   --voice-sample "$WORK/in/voice.wav" --supporting-media "$WORK/in/other/presenter.png" \
   --rights-confirmed --adult-presenter-confirmed >/dev/null
-[[ "$(jq -r .input.presenter_image "$MANIFEST")" == "assets/source/presenter.png" ]] || fail "presenter image path"
-[[ "$(jq -r '.input.supporting_media[0]' "$MANIFEST")" == "assets/source/presenter-2.png" ]] || fail "name collision"
+[[ "$(jq -r .input.presenter_image "$MANIFEST" | tr -d '\r')" == "assets/source/presenter.png" ]] || fail "presenter image path"
+[[ "$(jq -r '.input.supporting_media[0]' "$MANIFEST" | tr -d '\r')" == "assets/source/presenter-2.png" ]] || fail "name collision"
 [[ -f "$JOB/assets/audio/reference/voice.wav" ]] || fail "voice sample copy"
 if python3 "$SCRIPTS/init_job.py" --job-dir "$JOB" --presenter-image "$WORK/in/presenter.png" --topic x 2>/dev/null; then
   fail "init_job overwrote a non-empty job"
@@ -151,5 +151,5 @@ pass "finalize_delivery verifies before publishing"
 
 set_json '.artifacts.master = "outputs/smoke-master.mp4" | .artifacts.share = "outputs/smoke-share.mp4" | .qa.delivery_report = "outputs/smoke-delivery-report.json"'
 python3 "$SCRIPTS/check_state.py" "$MANIFEST" --write >/dev/null
-[[ "$(jq -r .state "$MANIFEST")" == "verified" ]] || fail "expected verified"
+[[ "$(jq -r .state "$MANIFEST" | tr -d '\r')" == "verified" ]] || fail "expected verified"
 pass "job reaches verified"
