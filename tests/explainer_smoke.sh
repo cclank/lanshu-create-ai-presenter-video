@@ -9,6 +9,9 @@ SKILL_DIR="$(cd "$(dirname "$0")/.." && pwd -P)"
 SCRIPTS="$SKILL_DIR/scripts"
 X="$SKILL_DIR/explainer"
 TMP_ROOT="${TMPDIR:-/tmp}"
+# Windows sets TMPDIR to a native path (C:\...\Temp); mktemp would then return a path
+# carrying a drive colon, which rsync reads as a remote host. Normalise it to POSIX.
+if command -v cygpath >/dev/null 2>&1; then TMP_ROOT="$(cygpath -u "$TMP_ROOT")"; fi
 WORK="$(mktemp -d "${TMP_ROOT%/}/explainer-smoke.XXXXXX")"
 # A failed cleanup must not decide the exit status: under `set -e` a rejected rm would turn a
 # fully successful run into exit code 1. Clean up best-effort and stay quiet.
@@ -23,10 +26,12 @@ set_json() { jq "$1" "$MANIFEST" >"$MANIFEST.tmp" && mv -- "$MANIFEST.tmp" "$MAN
 
 # --- intake: the styled route needs no presenter image, but a style; it is 16:9
 python3 "$SCRIPTS/init_job.py" --job-dir "$JOB" --route styled --explainer-style v3-notebook --topic "讲清楚 KV cache" >/dev/null
-[[ "$(jq -r .creative.route "$MANIFEST")" == "styled" ]] || fail "route not recorded"
-[[ "$(jq -r .creative.explainer_style "$MANIFEST")" == "v3-notebook" ]] || fail "style not recorded"
-[[ "$(jq -r '.creative.width, .creative.height' "$MANIFEST" | paste -sd x -)" == "1920x1080" ]] || fail "styled route is not 16:9"
-[[ "$(jq -r .input.presenter_image "$MANIFEST")" == "" ]] || fail "styled route recorded a presenter image"
+# jq.exe emits CRLF on Windows, so a command substitution keeps a trailing \r and the string
+# comparisons below would never match. Strip it before comparing.
+[[ "$(jq -r .creative.route "$MANIFEST" | tr -d '\r')" == "styled" ]] || fail "route not recorded"
+[[ "$(jq -r .creative.explainer_style "$MANIFEST" | tr -d '\r')" == "v3-notebook" ]] || fail "style not recorded"
+[[ "$(jq -r '.creative.width, .creative.height' "$MANIFEST" | tr -d '\r' | paste -sd x -)" == "1920x1080" ]] || fail "styled route is not 16:9"
+[[ "$(jq -r .input.presenter_image "$MANIFEST" | tr -d '\r')" == "" ]] || fail "styled route recorded a presenter image"
 if python3 "$SCRIPTS/init_job.py" --job-dir "$WORK/j2" --route styled --topic x 2>/dev/null; then fail "styled route without a style"; fi
 if python3 "$SCRIPTS/init_job.py" --job-dir "$WORK/j3" --route presenter --topic x 2>/dev/null; then
   fail "presenter route without a presenter image"
@@ -63,7 +68,7 @@ pass "story.py writes a draft story.json; docs.py and srt.py read it"
 
 # --- every style's starter: sync, stamp, scripts parse
 HAVE_NODE=0; command -v node >/dev/null && HAVE_NODE=1
-DUR="$(jq -r .duration "$S")"
+DUR="$(jq -r .duration "$S" | tr -d '\r')"
 for kit in "$X"/kits/*/; do
   style="$(basename "$kit")"
   P="$WORK/films/$style"
@@ -91,7 +96,7 @@ set_json '.artifacts.script = "docs/SCRIPT.md" | .artifacts.beat_sheet = "docs/B
   | .artifacts.final_audio = "story/audio/narration.wav" | .qa.asr_report = "story/story.json"
   | .artifacts.timeline = "docs/TIMELINE.md" | .artifacts.storyboard = "docs/STORYBOARD.md" | .plan.status = "approved"
   | .artifacts.story = "story/story.json"'
-state() { python3 "$SCRIPTS/check_state.py" "$MANIFEST" | jq -r .evidenced_state; }
+state() { python3 "$SCRIPTS/check_state.py" "$MANIFEST" | jq -r .evidenced_state | tr -d '\r'; }
 [[ "$(state)" == "content_locked" ]] || fail "a --dry draft story locked the audio (state $(state))"
 jq '.draft = false' "$S" >"$S.tmp" && mv -- "$S.tmp" "$S"   # stands in for a voiced story
 [[ "$(state)" == "visual_plan_locked" ]] || fail "expected visual_plan_locked, got $(state)"

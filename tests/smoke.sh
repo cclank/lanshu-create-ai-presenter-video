@@ -6,6 +6,9 @@ set -euo pipefail
 SKILL_DIR="$(cd "$(dirname "$0")/.." && pwd -P)"
 SCRIPTS="$SKILL_DIR/scripts"
 TMP_ROOT="${TMPDIR:-/tmp}"
+# Windows sets TMPDIR to a native path (C:\...\Temp); mktemp would then return a path
+# carrying a drive colon, which rsync and friends read as a remote host. Normalise to POSIX.
+if command -v cygpath >/dev/null 2>&1; then TMP_ROOT="$(cygpath -u "$TMP_ROOT")"; fi
 WORK="$(mktemp -d "${TMP_ROOT%/}/presenter-smoke.XXXXXX")"
 # A failed cleanup must not decide the exit status: under `set -e` a rejected rm would turn a
 # fully successful run into exit code 1. Clean up best-effort and stay quiet.
