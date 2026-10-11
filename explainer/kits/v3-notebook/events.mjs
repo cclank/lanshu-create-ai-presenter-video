@@ -41,7 +41,7 @@ function findChrome() {
 }
 
 const { default: puppeteer } = await import(pathToFileURL(findPuppeteer()).href);
-const browser = await puppeteer.launch({ executablePath: findChrome(), headless: true, args: ["--no-sandbox", "--allow-file-access-from-files"] });
+const browser = await puppeteer.launch({ executablePath: findChrome(), headless: true, args: ["--allow-file-access-from-files"] });
 try {
   const page = await browser.newPage();
   await page.setViewport({ width: 1920, height: 1080 });
