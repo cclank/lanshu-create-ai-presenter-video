@@ -6,8 +6,13 @@ set -euo pipefail
 SKILL_DIR="$(cd "$(dirname "$0")/.." && pwd -P)"
 SCRIPTS="$SKILL_DIR/scripts"
 TMP_ROOT="${TMPDIR:-/tmp}"
+# Windows sets TMPDIR to a native path (C:\...\Temp); mktemp would then return a path
+# carrying a drive colon, which rsync and friends read as a remote host. Normalise to POSIX.
+if command -v cygpath >/dev/null 2>&1; then TMP_ROOT="$(cygpath -u "$TMP_ROOT")"; fi
 WORK="$(mktemp -d "${TMP_ROOT%/}/presenter-smoke.XXXXXX")"
-trap 'rm -rf -- "$WORK"' EXIT INT TERM
+# A failed cleanup must not decide the exit status: under `set -e` a rejected rm would turn a
+# fully successful run into exit code 1. Clean up best-effort and stay quiet.
+trap 'rm -rf -- "$WORK" >/dev/null 2>&1 || true' EXIT INT TERM
 # The unique directory name survives symlink resolution such as /var -> /private/var.
 WORK_NAME="$(basename "$WORK")"
 
@@ -29,7 +34,7 @@ set_json() {
 }
 
 state_of() {
-  python3 "$SCRIPTS/check_state.py" "$MANIFEST" | jq -r .evidenced_state
+  python3 "$SCRIPTS/check_state.py" "$MANIFEST" | jq -r .evidenced_state | tr -d '\r'
 }
 
 synth_video() {
@@ -49,8 +54,8 @@ python3 "$SCRIPTS/init_job.py" --job-dir "$JOB" \
   --presenter-image "$WORK/in/presenter.png" --script "$WORK/in/script.txt" \
   --voice-sample "$WORK/in/voice.wav" --supporting-media "$WORK/in/other/presenter.png" \
   --rights-confirmed --adult-presenter-confirmed >/dev/null
-[[ "$(jq -r .input.presenter_image "$MANIFEST")" == "assets/source/presenter.png" ]] || fail "presenter image path"
-[[ "$(jq -r '.input.supporting_media[0]' "$MANIFEST")" == "assets/source/presenter-2.png" ]] || fail "name collision"
+[[ "$(jq -r .input.presenter_image "$MANIFEST" | tr -d '\r')" == "assets/source/presenter.png" ]] || fail "presenter image path"
+[[ "$(jq -r '.input.supporting_media[0]' "$MANIFEST" | tr -d '\r')" == "assets/source/presenter-2.png" ]] || fail "name collision"
 [[ -f "$JOB/assets/audio/reference/voice.wav" ]] || fail "voice sample copy"
 if python3 "$SCRIPTS/init_job.py" --job-dir "$JOB" --presenter-image "$WORK/in/presenter.png" --topic x 2>/dev/null; then
   fail "init_job overwrote a non-empty job"
@@ -136,6 +141,9 @@ jq -e '.status == "verified" and .loudness_passed
   and ((.share_loudness.input_i | tonumber) + 16 | fabs) <= 0.5
   and .master_probe.format.filename == "smoke-master.mp4"' "$REPORT" >/dev/null \
   || fail "delivery report loudness"
+ffprobe -v error -show_entries stream=width,height -of json "$JOB/outputs/smoke-contact-sheet.png" \
+  | jq -e '.streams[0] | .height > .width' >/dev/null \
+  || fail "portrait contact sheet orientation"
 if grep -q "$WORK_NAME" "$REPORT"; then
   fail "delivery report contains an absolute path"
 fi
@@ -146,5 +154,5 @@ pass "finalize_delivery verifies before publishing"
 
 set_json '.artifacts.master = "outputs/smoke-master.mp4" | .artifacts.share = "outputs/smoke-share.mp4" | .qa.delivery_report = "outputs/smoke-delivery-report.json"'
 python3 "$SCRIPTS/check_state.py" "$MANIFEST" --write >/dev/null
-[[ "$(jq -r .state "$MANIFEST")" == "verified" ]] || fail "expected verified"
+[[ "$(jq -r .state "$MANIFEST" | tr -d '\r')" == "verified" ]] || fail "expected verified"
 pass "job reaches verified"
