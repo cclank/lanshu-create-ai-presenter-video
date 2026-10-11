@@ -141,6 +141,9 @@ jq -e '.status == "verified" and .loudness_passed
   and ((.share_loudness.input_i | tonumber) + 16 | fabs) <= 0.5
   and .master_probe.format.filename == "smoke-master.mp4"' "$REPORT" >/dev/null \
   || fail "delivery report loudness"
+ffprobe -v error -show_entries stream=width,height -of json "$JOB/outputs/smoke-contact-sheet.png" \
+  | jq -e '.streams[0] | .height > .width' >/dev/null \
+  || fail "portrait contact sheet orientation"
 if grep -q "$WORK_NAME" "$REPORT"; then
   fail "delivery report contains an absolute path"
 fi

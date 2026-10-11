@@ -29,7 +29,7 @@ TOLERANCE_LU="0.5"
 awk -v target="$TARGET_I" 'BEGIN { exit !(target >= -40 && target <= -5) }' \
   || die "PROGRAM_LUFS must be between -40 and -5: $TARGET_I"
 
-for command in ffmpeg ffprobe jq mktemp awk sed; do
+for command in ffmpeg ffprobe jq mktemp awk sed tr; do
   command -v "$command" >/dev/null 2>&1 || die "required command unavailable: $command"
 done
 
@@ -47,6 +47,7 @@ for output in "$MASTER" "$SHARE" "$REPORT" "$CONTACT"; do
 done
 
 TMP_ROOT="${TMPDIR:-/tmp}"
+if command -v cygpath >/dev/null 2>&1; then TMP_ROOT="$(cygpath -u "$TMP_ROOT")"; fi
 TMP_DIR="$(mktemp -d "${TMP_ROOT%/}/presenter-finalize.XXXXXX")"
 # A failed cleanup must not decide the exit status: under `set -e` a rejected rm would turn a
 # fully successful delivery into exit code 1. Clean up best-effort and stay quiet.
@@ -63,9 +64,9 @@ ffprobe -v error -show_streams -show_format -of json "$INPUT" >"$STREAM_JSON"
 jq -e '.streams | any(.codec_type == "video") and any(.codec_type == "audio")' "$STREAM_JSON" >/dev/null \
   || die "input must contain decodable video and audio streams"
 
-WIDTH="$(jq -r '[.streams[] | select(.codec_type == "video")][0].width' "$STREAM_JSON")"
-HEIGHT="$(jq -r '[.streams[] | select(.codec_type == "video")][0].height' "$STREAM_JSON")"
-FPS="$(jq -r '[.streams[] | select(.codec_type == "video")][0].avg_frame_rate' "$STREAM_JSON")"
+WIDTH="$(jq -r '[.streams[] | select(.codec_type == "video")][0].width' "$STREAM_JSON" | tr -d '\r')"
+HEIGHT="$(jq -r '[.streams[] | select(.codec_type == "video")][0].height' "$STREAM_JSON" | tr -d '\r')"
+FPS="$(jq -r '[.streams[] | select(.codec_type == "video")][0].avg_frame_rate' "$STREAM_JSON" | tr -d '\r')"
 [[ "$FPS" != "0/0" && -n "$FPS" ]] || FPS="30"
 
 measure_loudness() {
@@ -87,11 +88,11 @@ MEASURE_JSON="$TMP_DIR/source-loudness.json"
 jq -e '.input_i | test("^-?[0-9]+([.][0-9]+)?$") and (tonumber > -70)' "$MEASURE_JSON" >/dev/null \
   || die "input audio is silent or unmeasurable ($(jq -r .input_i "$MEASURE_JSON") LUFS); confirm the narration is routed into the render"
 
-MEASURED_I="$(jq -r .input_i "$MEASURE_JSON")"
-MEASURED_TP="$(jq -r .input_tp "$MEASURE_JSON")"
-MEASURED_LRA="$(jq -r .input_lra "$MEASURE_JSON")"
-MEASURED_THRESH="$(jq -r .input_thresh "$MEASURE_JSON")"
-OFFSET="$(jq -r .target_offset "$MEASURE_JSON")"
+MEASURED_I="$(jq -r .input_i "$MEASURE_JSON" | tr -d '\r')"
+MEASURED_TP="$(jq -r .input_tp "$MEASURE_JSON" | tr -d '\r')"
+MEASURED_LRA="$(jq -r .input_lra "$MEASURE_JSON" | tr -d '\r')"
+MEASURED_THRESH="$(jq -r .input_thresh "$MEASURE_JSON" | tr -d '\r')"
+OFFSET="$(jq -r .target_offset "$MEASURE_JSON" | tr -d '\r')"
 
 LOUDNORM="loudnorm=I=${TARGET_I}:TP=${TARGET_TP}:LRA=9:measured_I=${MEASURED_I}:measured_TP=${MEASURED_TP}:measured_LRA=${MEASURED_LRA}:measured_thresh=${MEASURED_THRESH}:offset=${OFFSET}:linear=true:print_format=summary"
 VIDEO_FILTER="scale=trunc(iw/2)*2:trunc(ih/2)*2:flags=lanczos,setsar=1,fps=${FPS},format=yuv420p"
@@ -156,7 +157,7 @@ ffmpeg -hide_banner -nostdin -i "$TMP_MASTER" \
 BLACK_EVENTS="$(grep -c 'black_start:' "$TMP_DIR/picture-events.log" || true)"
 FREEZE_EVENTS="$(grep -c 'freeze_start:' "$TMP_DIR/picture-events.log" || true)"
 
-DURATION="$(ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 "$TMP_MASTER")"
+DURATION="$(ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 "$TMP_MASTER" | tr -d '\r')"
 awk -v duration="$DURATION" 'BEGIN {
   p[1]=0.2; p[2]=duration*0.125; p[3]=duration*0.25; p[4]=duration*0.375;
   p[5]=duration*0.5; p[6]=duration*0.625; p[7]=duration*0.75;
