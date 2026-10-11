@@ -12,22 +12,28 @@ import { pathToFileURL } from "node:url";
 
 const project = resolve(process.argv[2] || ".");
 const home = homedir();
+// chrome-headless-shell carries a .exe suffix on Windows.
+const CHROME_BIN = process.platform === "win32" ? "chrome-headless-shell.exe" : "chrome-headless-shell";
 
 function findPuppeteer() {
-  const base = join(home, ".npm/_npx");
-  for (const d of existsSync(base) ? readdirSync(base) : []) {
-    for (const rel of ["lib/puppeteer/puppeteer-core.js", "lib/esm/puppeteer/puppeteer-core.js"]) {
-      const p = join(base, d, "node_modules/puppeteer-core", rel);
-      if (existsSync(p)) return p;
+  // npm puts its npx cache under ~/.npm on POSIX and under %LocalAppData%\npm-cache on Windows.
+  const bases = [join(home, ".npm/_npx")];
+  if (process.env.LOCALAPPDATA) bases.push(join(process.env.LOCALAPPDATA, "npm-cache/_npx"));
+  for (const base of bases) {
+    for (const d of existsSync(base) ? readdirSync(base) : []) {
+      for (const rel of ["lib/puppeteer/puppeteer-core.js", "lib/esm/puppeteer/puppeteer-core.js"]) {
+        const p = join(base, d, "node_modules/puppeteer-core", rel);
+        if (existsSync(p)) return p;
+      }
     }
   }
-  throw new Error("puppeteer-core not found in ~/.npm/_npx (run any `npx hyperframes@0.8.81` command once)");
+  throw new Error("puppeteer-core not found in the npm npx cache (run any `npx hyperframes@0.8.81` command once)");
 }
 function findChrome() {
   const base = join(home, ".cache/hyperframes/chrome/chrome-headless-shell");
   for (const d of (existsSync(base) ? readdirSync(base) : []).sort().reverse()) {
     for (const sub of readdirSync(join(base, d))) {
-      const p = join(base, d, sub, "chrome-headless-shell");
+      const p = join(base, d, sub, CHROME_BIN);
       if (existsSync(p)) return p;
     }
   }
