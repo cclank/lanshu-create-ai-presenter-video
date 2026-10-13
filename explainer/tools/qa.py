@@ -13,6 +13,7 @@ import argparse, json, os, re, shutil, subprocess, sys, tempfile
 from pathlib import Path
 
 HF = os.environ.get("HYPERFRAMES", "hyperframes@0.8.81")
+NPX = shutil.which("npx") or "npx"  # Windows: npx is npx.cmd, which subprocess cannot find by bare name
 STILL = 0.001
 GAP = 0.3
 
@@ -52,7 +53,7 @@ def diff(a, b):
 
 
 def snapshot(project, times, out):
-    result = subprocess.run(["npx", "--yes", HF, "snapshot", str(project), "--at", ",".join(f"{t:g}" for t in times),
+    result = subprocess.run([NPX, "--yes", HF, "snapshot", str(project), "--at", ",".join(f"{t:g}" for t in times),
                              "--no-end", "--describe", "false", "-o", str(out)], capture_output=True, text=True)
     if result.returncode:
         sys.stderr.write(result.stdout + result.stderr)
@@ -71,7 +72,7 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
     S = story_of(P)
 
-    chk = subprocess.run(["npx", "--yes", HF, "check"], cwd=P, capture_output=True, text=True)
+    chk = subprocess.run([NPX, "--yes", HF, "check"], cwd=P, capture_output=True, text=True)
     text = chk.stdout + chk.stderr
     lint = re.search(r"(\d+) error\(s\), (\d+) warning\(s\)", text)
     check = {"passed": "Check passed" in text, "lint_errors": int(lint.group(1)) if lint else None,
