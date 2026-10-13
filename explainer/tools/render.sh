@@ -14,7 +14,7 @@ mkdir -p "$PROJECT/renders" "$OUT"
 OUT="$(cd "$OUT" && pwd -P)"
 if [[ "${DRAFT:-0}" == "1" ]]; then
   (cd "$PROJECT" && npx --yes "$HF" render --quality draft --fps 30 -o "renders/$NAME-draft-full.mp4")
-  ffmpeg -y -loglevel error -i "$PROJECT/renders/$NAME-draft-full.mp4" -vf scale=1280:-2 -c:v libx264 -crf 30 -preset veryfast \
+  ffmpeg -y -loglevel error -i "$PROJECT/renders/$NAME-draft-full.mp4" -vf "scale=w=if(gt(iw\,ih)\,1280\,-2):h=if(gt(iw\,ih)\,-2\,1280)" -c:v libx264 -crf 30 -preset veryfast \
     -c:a aac -b:a 96k -movflags +faststart "$OUT/$NAME-draft.mp4"
   rm -f "$PROJECT/renders/$NAME-draft-full.mp4"
   echo "draft for review: $OUT/$NAME-draft.mp4 ($(du -h "$OUT/$NAME-draft.mp4" | cut -f1); 低清审片版，可直接发到手机上看)"

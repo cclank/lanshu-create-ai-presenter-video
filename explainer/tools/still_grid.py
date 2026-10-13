@@ -8,6 +8,7 @@
 Frames stay local (--describe false: never sent to a vision API). HYPERFRAMES=npx spec (default hyperframes@0.8.81).
 """
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -47,7 +48,7 @@ def main():
         present = [(k, label) for k, label in NAMES + TRIO if (films / k / "index.html").exists()]
         for key, _ in present:
             out = Path(tmp) / key
-            subprocess.run(["npx", "--yes", hf, "snapshot", str(films / key), "--at", times, "--no-end",
+            subprocess.run([shutil.which("npx") or "npx", "--yes", hf, "snapshot", str(films / key), "--at", times, "--no-end",
                             "--describe", "false", "-o", str(out)], check=True, capture_output=True)
             shots[key] = sorted(out.glob("frame-*.png"))
         rows = max(1, -(-len(present) // 3))
