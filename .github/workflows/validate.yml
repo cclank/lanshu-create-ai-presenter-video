@@ -39,7 +39,7 @@ jobs:
 
       - name: Check repository portability
         run: |
-          if grep -R -n '/Users/' README.md README.zh-CN.md SKILL.md agents assets references scripts tests explainer; then
+          if grep -R -n '/Users/' README.md README.zh-CN.md README.ja.md SKILL.md agents assets references scripts tests explainer; then
             echo 'Machine-specific home path found.' >&2
             exit 1
           fi
