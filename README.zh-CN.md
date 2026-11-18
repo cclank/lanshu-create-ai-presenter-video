@@ -1,6 +1,6 @@
 # lanshu-create-ai-presenter-video
 
-[English](README.md) | **简体中文**
+[English](README.md) | **简体中文** | [日本語](README.ja.md)
 
 [![Agent Skills](https://img.shields.io/badge/Agent_Skills-SKILL.md-111827)](https://agentskills.io)
 ![Harness Neutral](https://img.shields.io/badge/Harness-Neutral-8B5CF6)
